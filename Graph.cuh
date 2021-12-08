@@ -36,9 +36,15 @@ private:
 } CompactGraph;
 
 
+typedef struct node_LL {
+	struct node_LL* next;
+	unsigned int val;
+} node_LL;
+
 typedef class Graph {
 public:
 	Graph(unsigned int n, unsigned int density);
+	Graph(unsigned int n, double block_frequency, unsigned int block_size, double density);
 	~Graph();
 	unsigned int getOrder();
 	uint64_t getSize();
@@ -52,8 +58,10 @@ public:
 	Let G=({v_1,...,v_n},E) be a simple undirected graph, and let adj(G) be its adjacency matrix. Since switching two rows i,j and then switching the columns i,j produces an isomorphic graph (we just permuted the vertices while preserving the adjacencies), each pass through compactify produces an isomorphic graph.
 	*/
 	void blockify();
+	void pack();
 	void forceSimple();
 	void print();
+	void writeToFileJSON(char* fName);
 private:
 	unsigned int order;
 	unsigned char* adjMatrix;
