@@ -77,9 +77,11 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="Combinatorics.cu" />
     <CudaCompile Include="Graph.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Combinatorics.cuh" />
     <ClInclude Include="Graph.cuh" />
   </ItemGroup>
   <ItemGroup>

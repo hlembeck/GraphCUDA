@@ -111,27 +111,7 @@ unsigned int ceiling_div_16(unsigned int n) {
 	return (n & 15 ? (n >> 4) + 1 : n >> 4);
 }
 
-
-
-//for (unsigned int k = 0; k < order; k++) {
-//	for (unsigned int l = 0; l < order; l++) {
-//		printf(" %d", swapper[k * order + l]);
-//	}
-//	printf("\n");
-//}
-//printf("\n");
-void Graph::pack() {
-
-	/*
-	head to point to the head of a linked list that partitions the vertices of G so that the algorithm only swaps vertices in the same part. If the linked list describes an array [i_0,...,i_k], then the algorithm is to swap columns or rows of indices j_1,j_2 only if i_l < j_1 < j_2 < i_{l+1} for some 0<=l<k.
-	*/
-	node_LL* head = new node_LL;
-	head->val = 1;
-	node_LL* temp = new node_LL;
-	head->next = temp;
-	temp->next = NULL;
-	temp->val = order;
-
+void Graph::swapVertices(unsigned int i, unsigned int j) {
 	unsigned char* swapper = new unsigned char[order * order];
 	unsigned char* dev_A = 0;
 	unsigned char* dev_B = 0;
@@ -142,178 +122,45 @@ void Graph::pack() {
 	cudaMalloc((void**)&dev_B, order * order);
 	cudaMalloc((void**)&dev_Out, order * order);
 
+	memset(swapper, 0, order * order);
 	for (unsigned int row = 0; row < order; row++) {
-
-		for (temp = head; temp->next; temp = temp->next) {
-			if (temp->val < row + 1)
-				continue;
-			unsigned int stop = temp->next->val;
-			for (unsigned int i = temp->val; i < stop; i++) {
-				if (adjMatrix[row * order + i])
-					continue;
-
-				for (unsigned int j = i + 1; j < stop; j++) {
-					if (adjMatrix[row * order + j]) {
-						memset(swapper, 0, order * order);
-						for (unsigned int i = 0; i < order; i++) {
-							swapper[i * (order + 1)] = 1;
-						}
-
-						swapper[i * order + j] = 1;
-						swapper[j * order + i] = 1;
-						swapper[i * (order + 1)] = 0;
-						swapper[j * (order + 1)] = 0;
-
-						cudaMemcpy(dev_A, adjMatrix, order * order, cudaMemcpyHostToDevice);
-						cudaMemcpy(dev_B, swapper, order * order, cudaMemcpyHostToDevice);
-
-						dim3 numBlocks(ceiling_div_16(order), ceiling_div_16(order));
-						dim3 numThreadsPerBlock(16, 16);
-						MatMult_UChar <<<numBlocks, numThreadsPerBlock>>> (dev_A, dev_B, dev_Out, order);
-						cudaDeviceSynchronize();
-						cudaMemcpy(dev_A, dev_Out, order * order, cudaMemcpyDeviceToDevice);
-						MatMult_UChar <<<numBlocks, numThreadsPerBlock>>> (dev_B, dev_A, dev_Out, order);
-						cudaDeviceSynchronize();
-						cudaMemcpy(adjMatrix, dev_Out, order * order, cudaMemcpyDeviceToHost);
-						goto end;
-					}
-				}
-
-				if (i != temp->val) {
-					node_LL* temp2 = new node_LL;
-					temp2->val = i;
-					temp2->next = temp->next;
-					temp->next = temp2;
-					temp = temp->next;
-					goto final;
-				}
-
-				end:
-			}
-			final:
-		}
-		//print();
+		swapper[row * (order + 1)] = 1;
 	}
 
+	swapper[i * order + j] = 1;
+	swapper[j * order + i] = 1;
+	swapper[i * (order + 1)] = 0;
+	swapper[j * (order + 1)] = 0;
 
-	/*
-	//Set first row
-	for (unsigned int i = 1; i < order-1; i++) {
-		if (adjMatrix[i])
-			continue;
+	cudaMemcpy(dev_A, adjMatrix, order * order, cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_B, swapper, order * order, cudaMemcpyHostToDevice);
 
-		memset(swapper, 0, order*order);
-		for (unsigned int i = 0; i < order; i++) {
-			swapper[i * (order + 1)] = 1;
-		}
+	dim3 numBlocks(ceiling_div_16(order), ceiling_div_16(order));
+	dim3 numThreadsPerBlock(16, 16);
+	MatMult_UChar <<<numBlocks, numThreadsPerBlock >>> (dev_A, dev_B, dev_Out, order);
+	cudaDeviceSynchronize();
+	cudaMemcpy(dev_A, dev_Out, order * order, cudaMemcpyDeviceToDevice);
 
-		for (unsigned int j = i + 1; j < order; j++) {
-			if (adjMatrix[j]) {
-				swapper[i * order + j] = 1;
-				swapper[j * order + i] = 1;
-				swapper[i * (order + 1)] = 0;
-				swapper[j * (order + 1)] = 0;
-
-				cudaMemcpy(dev_A, adjMatrix, order * order, cudaMemcpyHostToDevice);
-				cudaMemcpy(dev_B, swapper, order * order, cudaMemcpyHostToDevice);
-
-				dim3 numBlocks(ceiling_div_16(order), ceiling_div_16(order));
-				dim3 numThreadsPerBlock(16, 16);
-				MatMult_UChar << <numBlocks, numThreadsPerBlock >> > (dev_A, dev_B, dev_Out, order);
-				cudaDeviceSynchronize();
-				cudaMemcpy(dev_A, dev_Out, order * order, cudaMemcpyDeviceToDevice);
-				MatMult_UChar << <numBlocks, numThreadsPerBlock >> > (dev_B, dev_A, dev_Out, order);
-				cudaDeviceSynchronize();
-				cudaMemcpy(adjMatrix, dev_Out, order * order, cudaMemcpyDeviceToHost);
-				break;
-			}
-		}
+	memset(swapper, 0, order * order);
+	for (unsigned int row = 0; row < order; row++) {
+		swapper[row * (order + 1)] = 1;
 	}
-	*/
+
+	swapper[i * order + j] = 1;
+	swapper[j * order + i] = 1;
+	swapper[i * (order + 1)] = 0;
+	swapper[j * (order + 1)] = 0;
+	cudaMemcpy(dev_B, swapper, order * order, cudaMemcpyHostToDevice);
+
+	MatMult_UChar <<<numBlocks, numThreadsPerBlock >>> (dev_B, dev_A, dev_Out, order);
+	cudaDeviceSynchronize();
+	cudaMemcpy(adjMatrix, dev_Out, order * order, cudaMemcpyDeviceToHost);
+
 
 	cudaFree(dev_A);
 	cudaFree(dev_B);
 	cudaFree(dev_Out);
-	
-	while (head) {
-		temp = head;
-		head = head->next;
-		delete temp;
-	}
 	delete[] swapper;
-}
-
-
-void Graph::blockify() {
-	unsigned int row = 0;
-	unsigned int col = 0;
-	unsigned int temp;
-	while (row < order-1) {
-		col = compactify(row,col);
-		row++;
-	}
-	return;
-}
-
-unsigned int Graph::compactify(unsigned int row, unsigned int start_col) {
-	unsigned char* dev_A = 0;
-	unsigned char* dev_B = 0;
-	unsigned char* dev_Out = 0;
-	unsigned int col = start_col;
-	bool trivial = true;
-	unsigned char* switcher = new unsigned char[(uint64_t)order * (uint64_t)order];
-
-	cudaSetDevice(0);
-	cudaMalloc((void**)&dev_A, order * order);
-	cudaMalloc((void**)&dev_B, order * order);
-	cudaMalloc((void**)&dev_Out, order * order);
-
-	while (col < order-1) {
-		while (col < order && adjMatrix[row * order + col]) {
-			col++;
-		}
-
-		memset(switcher, 0, (uint64_t)order * (uint64_t)order);
-		cudaMemset(dev_Out, 0, (uint64_t)order * (uint64_t)order);
-		cudaMemcpy(dev_A, adjMatrix, (uint64_t)order * (uint64_t)order, cudaMemcpyHostToDevice);
-
-		//Set switcher to elementary matrix that swaps first column possible.
-		for (uint64_t i = 0; i < order; i++) {
-			switcher[((uint64_t)order + 1) * i] = 1;
-		}
-		for (uint64_t i = col + 1; i < order; i++) {
-			if (adjMatrix[(uint64_t)row * order + i]) {
-				switcher[((uint64_t)order + 1) * col] = 0;
-				switcher[((uint64_t)order + 1) * i] = 0;
-				switcher[col * order + i] = 1;
-				switcher[i * order + col] = 1;
-				col++;
-				trivial = false;
-				break;
-			}
-		}
-
-		if (trivial) {
-			break;
-		}
-
-		cudaMemcpy(dev_B, switcher, (uint64_t)order * (uint64_t)order, cudaMemcpyHostToDevice);
-		dim3 numBlocks(ceiling_div_16(order), ceiling_div_16(order));
-		dim3 numThreadsPerBlock(16, 16);
-		MatMult_UChar<<<numBlocks, numThreadsPerBlock>>>(dev_A, dev_B, dev_Out, order);
-		cudaDeviceSynchronize();
-		cudaMemcpy(dev_A, dev_Out, order * order, cudaMemcpyDeviceToDevice);
-		MatMult_UChar<<<numBlocks, numThreadsPerBlock >>>(dev_B, dev_A, dev_Out, order);
-		cudaDeviceSynchronize();
-		cudaMemcpy(adjMatrix, dev_Out, (uint64_t)order * (uint64_t)order, cudaMemcpyDeviceToHost);
-		trivial = true;
-	}
-
-	cudaFree(dev_A);
-	cudaFree(dev_B);
-	cudaFree(dev_Out);
-	delete[] switcher;
-	return col;
 }
 
 void Graph::forceSimple() {
@@ -358,4 +205,138 @@ void Graph::writeToFileJSON(char* fName) {
 
 	file << "]}";
 	file.close();
+}
+
+void min_heapify(unsigned int* arr, unsigned int* weights, unsigned int i, unsigned int heapsize){
+	unsigned int left = (i << 1) + 1;
+	unsigned int right = (i + 1) << 1;
+	unsigned int min = i;
+	if (left < heapsize && weights[arr[left]] < weights[arr[i]])
+		min = left;
+	if (right < heapsize && weights[arr[right]] < weights[arr[min]])
+		min = right;
+	if (min != i) {
+		unsigned int temp = arr[i];
+		arr[i] = arr[min];
+		arr[min] = temp;
+
+		min_heapify(arr, weights, min, heapsize);
+	}
+	return;
+}
+
+void build_min_heap(unsigned int* arr, unsigned int* weights, unsigned int len) {
+	for (unsigned int i = (len >> 1); i > 0; i--) {
+		min_heapify(arr, weights, i, len);
+	}
+	min_heapify(arr, weights, 0, len);
+}
+
+void heapsort(unsigned int* arr, unsigned int* weights, unsigned int len) {
+	if (len == 0)
+		return;
+	build_min_heap(arr, weights, len);
+
+	for (unsigned int i = len - 1; i > 0; i--) {
+		unsigned int temp = arr[0];
+		arr[0] = arr[i];
+		arr[i] = temp;
+		min_heapify(arr, weights, 0, i);
+	}
+}
+
+void fill_map(unsigned int* map, unsigned int *curr, unsigned int i, unsigned char* visited, unsigned int* degrees, unsigned int** adjList) {
+	node* head = new node;
+	node* tail = head;
+	node* temp;
+	head->val = i;
+	head->next = NULL;
+	while (head) {
+		i = head->val;
+		map[*curr] = i;
+		(*curr)++;
+		for (unsigned int j = 0; j < degrees[i]; j++) {
+			if (visited[adjList[i][j]] == 0) {
+				visited[adjList[i][j]] = 1;
+				temp = new node;
+				temp->val = adjList[i][j];
+				temp->next = NULL;
+				tail->next = temp;
+				tail = temp;
+			}
+		}
+		temp = head;
+		head = head->next;
+		delete temp;
+	}
+}
+
+Permutation Graph::pack() {
+	unsigned int* degrees = new unsigned int[order];
+	unsigned int** adjList = new unsigned int* [order];
+	unsigned int* sortedVertices = new unsigned int[order];
+	unsigned int* map = new unsigned int[order];
+	unsigned int temp;
+	unsigned char* visited = new unsigned char[order];
+	unsigned int curr = 0;
+	memset(visited, 0, order);
+
+	for (unsigned int i = 0; i < order; i++) {
+		temp = 0;
+		for (unsigned int j = 0; j < order; j++) {
+			temp += adjMatrix[i * order + j];
+		}
+		adjList[i] = new unsigned int[temp];
+		degrees[i] = temp;
+		temp = 0;
+		for (unsigned int j = 0; j < order; j++) {
+			if (adjMatrix[i * order + j])
+				adjList[i][temp++] = j;
+		}
+		sortedVertices[i] = i;
+	}
+	heapsort(sortedVertices, degrees, order);
+
+	for (unsigned int i = 0; i < order; i++) {
+		heapsort(adjList[i], degrees, degrees[i]);
+	}
+
+	node* head = NULL;
+	while (curr<order) {
+		unsigned int i = 0;
+		for (i; i < order; i++) {
+			if (visited[sortedVertices[i]] == 0)
+				break;
+		}
+		if (i == order)
+			break;
+		visited[sortedVertices[i]] = 1;
+		fill_map(map, &curr, sortedVertices[i], visited, degrees, adjList);
+	}
+	delete[] degrees;
+	return Permutation(map, order);
+}
+
+void Graph::relabel(Permutation* s) {
+	unsigned int* map = new unsigned int[order];
+	for (unsigned int i = 0; i < order; i++) {
+		map[i] = i;
+	}
+
+	node_LL* head = s->getTranspositions();
+	node_LL* temp = head;
+
+	while (temp) {
+		swapVertices(map[temp->a], map[temp->b]);
+		unsigned int t = map[temp->a];
+		map[temp->a] = map[temp->b];
+		map[temp->b] = t;
+		temp = temp->next;
+	}
+
+	while (head) {
+		temp = head;
+		head = head->next;
+		delete temp;
+	}
 }

@@ -1,14 +1,14 @@
 #include "Graph.cuh"
 
 int main() {
-	Graph g = Graph(100, .075, 5, .2);
+	Graph g = Graph(100, .1, 5, .5);
 	g.forceSimple();
 	g.writeToFileJSON("C:\\Users\\Henry\\Desktop\\Coding\\Program_Graph\\graph_JSON\\initialGraph.json");
 	g.print();
-	printf("\nSize: %llu\n", g.getSize());
-	//g.blockify();
-	g.pack();
-	printf("\nSize: %llu\n", g.getSize());
+
+	Permutation s = g.pack();
+	g.relabel(&s);
+
 	g.print();
 	g.writeToFileJSON("C:\\Users\\Henry\\Desktop\\Coding\\Program_Graph\\graph_JSON\\finalGraph.json");
 

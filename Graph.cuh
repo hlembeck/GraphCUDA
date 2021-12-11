@@ -1,13 +1,4 @@
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <time.h>
-#include <random>
-#include <stdint.h>
-#include <limits.h>
+#include "Combinatorics.cuh"
 
 typedef class CompactGraph {
 public:
@@ -35,11 +26,11 @@ private:
 	bool directed;
 } CompactGraph;
 
-
-typedef struct node_LL {
-	struct node_LL* next;
-	unsigned int val;
-} node_LL;
+typedef struct vertexData {
+	unsigned int degree;
+	unsigned int index;
+	unsigned int* neighbors;
+} vertexData;
 
 typedef class Graph {
 public:
@@ -48,22 +39,16 @@ public:
 	~Graph();
 	unsigned int getOrder();
 	uint64_t getSize();
-	/*
-	blockify() modifies adjMatrix so that, if C_1,...,C_k are adjacency matrices of the connected components of G, then adjMatrix is a diagonal block matrix with C_1 ... C_k as the diagonal. Thus blockify() alters G, but only up to isomorphism of graphs.
-
-	**IMPORTANT**
-	adjMatrix must represent a simple undirected graph.
-
-	Proof of concept:
-	Let G=({v_1,...,v_n},E) be a simple undirected graph, and let adj(G) be its adjacency matrix. Since switching two rows i,j and then switching the columns i,j produces an isomorphic graph (we just permuted the vertices while preserving the adjacencies), each pass through compactify produces an isomorphic graph.
-	*/
-	void blockify();
-	void pack();
+	Permutation pack();
+	//Pushes isolated vertices to the end of the vertex list and returns the index of the first isolated vertex.
+	void swapVertices(unsigned int i, unsigned int j);
 	void forceSimple();
+	void relabel(Permutation* s);
 	void print();
 	void writeToFileJSON(char* fName);
 private:
 	unsigned int order;
 	unsigned char* adjMatrix;
-	unsigned int compactify(unsigned int row, unsigned int start_col);
 } Graph;
+
+void heapsort(unsigned int* arr, unsigned int* weights, unsigned int len);
